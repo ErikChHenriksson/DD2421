@@ -2,7 +2,8 @@ import monkdata as m
 import dtree
 import drawtree_qt5 as drawtree
 import random
-
+import matplotlib.pyplot as plt
+import statistics
 
 """ Assignment 1 """
 def calc_entropy():
@@ -49,7 +50,7 @@ def monk1_subset():
 
 
 def draw_tree():
-    tree = dtree.buildTree(m.monk1, m.attributes, 2)
+    tree = dtree.buildTree(m.monk1, m.attributes)
     drawtree.drawTree(tree)
 
 
@@ -70,24 +71,56 @@ def partition(data, fraction):
     breakPoint = int(len(ldata) * fraction)
     return ldata[:breakPoint], ldata[breakPoint:]
 
-def pruning():
-    monk1train, monk1val = partition(m.monk1, 0.6)
-    t=dtree.buildTree(monk1train, m.attributes)
-    prev_best = dtree.check(t, monk1val)
+def pruning(data, fraction, testset):
+    train, vali = partition(data, fraction)
+    t=dtree.buildTree(train, m.attributes)
+    prev_best = dtree.check(t, vali)
     while (True):
         best = 0
         for pruned in dtree.allPruned(t):
-            if dtree.check(pruned, monk1val) > best:
-                best = dtree.check(pruned, monk1val)
+            if dtree.check(pruned, vali) > best:
+                best = dtree.check(pruned, vali)
                 new_t = pruned
         if best <= prev_best:
             break
         prev_best = best
         t = new_t
     # Found best
-    print("Performance best", dtree.check(t, m.monk1test))
+    return dtree.check(t, testset)
+
+def assignment_6():
+    print(pruning(m.monk1, 0.6))
+
+
+""" Assignment 7 """
+
+def pruning_tests():
+    setnum = 1
+    attempts = 50
+    frac = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
+    title = "Classification error for "
+    for data, testset, set_name in [(m.monk1, m.monk1test, "Monk 1"), (m.monk3, m.monk3test, "Monk 3")]: #, (m.monk2, m.monk2test)
+        means, stdevs = [], []
+        for fraction in [0.3, 0.4, 0.5, 0.6, 0.7, 0.8]:
+            res = []
+            for i in range(attempts):
+                res.append(1-pruning(data, fraction, testset))
+            print("Set", setnum, "fraction", fraction, "mean", statistics.mean(res), "stdev", statistics.stdev(res))
+            means.append(statistics.mean(res))
+            stdevs.append(statistics.stdev(res))
+
+        plt.errorbar(frac, means, stdevs, linestyle='None', fmt='-o', capsize=3)
+        plt.title(title+set_name)
+        plt.ylabel('Classification error')
+        plt.xlabel('Fraction')
+        plt.legend(['Standard deviation error bar'])
+        plt.show()
+        setnum += 2
+            
+
 
 
 if __name__ == "__main__":
-    pruning()
+    #monk1_subset()
+    draw_tree()
 
