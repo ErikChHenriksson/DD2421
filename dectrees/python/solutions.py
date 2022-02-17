@@ -50,7 +50,7 @@ def monk1_subset():
 
 
 def draw_tree():
-    tree = dtree.buildTree(m.monk1, m.attributes)
+    tree = dtree.buildTree(m.monk1, m.attributes, 4)
     drawtree.drawTree(tree)
 
 
