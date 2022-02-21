@@ -25,7 +25,9 @@ def kernel(x ,y ):
     # linear
     return np.dot(x, y)
 
-
+def kernel_pol(x,y,p):
+	#polynomial
+	return 	
 
 
 
