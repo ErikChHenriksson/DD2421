@@ -3,39 +3,49 @@ from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 from enum import Enum
 
-debugging = True
+debugging = False
 
 # Generate data
 if debugging:
     np.random.seed(100) # 100
 
-#spread = 0.2 # 0.2
-#classA = np.concatenate((np.random.randn(10 , 2) * spread+[1.5, 0.5], np.random.randn(10, 2) * spread + [-1.5 ,0.5]))
-#classB = np.random.randn(20 , 2) * spread + [0.0 , -0.5]
+spread = 0.2 # 0.2
+classA = np.concatenate((np.random.randn(10 , 2) * spread+[1.5, 0.5], np.random.randn(10, 2) * spread + [-1.5 ,0.5]))
+classB = np.random.randn(20 , 2) * spread + [0.0 , -0.5]
 
 # NEW
-spread = 0.2 # 0.2
-classA = np.random.randn(2 , 2)*spread + [ 0.0 , 1.0]
-classB = np.random.randn(2 , 2)*spread + [ 0.0 , 0.0]
+#spread = 0.2 # 0.2
+#classA = np.random.randn(2 , 2)*spread + [ 2.0 , 1.0]
+#classB = np.random.randn(2 , 2)*spread + [ -2.0 , -1.0]
 
 inputs = np.concatenate(( classA , classB ) )
 t = np.concatenate((np.ones( classA.shape [0]) , -np.ones( classB.shape [0] )))
 N = inputs.shape[ 0 ] # Number of rows ( samples )
 permute = list( range(N) )
-random.shuffle(permute)
+#random.shuffle(permute)
 inputs = inputs[permute, :]
 t = t[permute]
 
-# Linear kernel
-def kernel(x ,y ):
-    # linear
-    return np.dot(x, y)
+def kernel(x, y, type="RBF"):
+    x = np.transpose(x)
+    if type == "linear":
+        return np.dot(x, y)
+    elif type == "poly":
+        return (np.dot(x,y)+1)**2
+    elif type == "poly3":
+        return (np.dot(x,y)+1)**3
+    elif type == "RBF":
+        sigma=0.3
+        return math.exp(-np.linalg.norm(x-y, 2)**2/(2*sigma**2))
+    else :
+        return 0
+
 
 def calculateP():
 	return np.array([[t[i]*t[j]*kernel(inputs[i], inputs[j]) for j in range(N)] for i in range(N)])
 
 def zerofun(alpha):
-    return np.dot(alpha, t)
+    return np.dot(alpha, inputs)
 
 P = calculateP()
 print("t: ",t)
@@ -52,16 +62,15 @@ def objective(alpha):
     """ test = 0.5 * np.dot(np.dot(P, alpha), alpha) - np.sum(alpha)
     return test """
 
-alpha = np.zeros(N) # initial guess of the alpha vector
+start = np.zeros(N) # initial guess of the alpha vector
 
-C = None
+C = 1
 B =[(0,C) for b in range(N)]
 XC = {'type':'eq', 'fun':zerofun}
 
-ret = minimize(objective, alpha, bounds=B, constraints=XC )
-#print"ret", ret)
+ret = minimize(objective, start, bounds=B, constraints=XC )
+print("ret", ret)
 alpha = ret['x']
-# TODO HELP - alpha is only zeros. Where is the error?
 print("alpha: ", alpha)
 
 # Extract non zero values of alpha
@@ -73,22 +82,24 @@ for i in range(len(alpha)):
 print("s: ",s)
 
 #New
-def calculateB(s): # HAVE TO BE BETWEEN 0 (AND C(if slack is used)) (not negative)
+def calculateB(s, bound = None): # HAVE TO BE BETWEEN 0 (AND C(if slack is used)) (not negative)
+    index_b = s[0]
+    if bound != None:
+        for i in s:
+            if alpha[i] < bound:
+                index_b = i
+                break
     a = [ alpha[i] for i in s]
-    sum_me = [ alpha[i]*t[i]*kernel(a, inputs[i]) for i in s]
-    return np.sum(sum_me)-np.sum(t) # New
+    sum_me = [ alpha[i]*t[i]*kernel(inputs[index_b], inputs[i]) for i in s]
+    return np.sum(sum_me)-t[index_b] # New
 
 b = calculateB(s)
 print("b: ",b)
 
-def ind(s):
+def ind(p):
     #print"s:", s, "b:", b)
-    a = [ alpha[i] for i in s]
-    x = [ inputs[i] for i in s]
-    t_s = [ t[i] for i in s]
-    sum_me = [ alpha[i]*t[i]*kernel(a, inputs[i]) for i in s]
-
-    return sum_me
+    sum_me = [ alpha[i]*t[i]*kernel(p, inputs[i]) for i in s]
+    return np.sum(sum_me) - b
 
 def indicator(p):
     a = [ alpha[i] for i in s]
@@ -99,7 +110,8 @@ def indicator(p):
     #print("t_i", [t[i] for i in s])
 
     sum_me = [ alpha[i]*t[i]*kernel(a, p) for i in s]
-    return np.sum(sum_me)
+    print("ind", np.sum(sum_me) - b)
+    return np.sum(sum_me) - b
 
 
 #plt.hold(True)
@@ -113,8 +125,8 @@ plt.savefig('svmplot.pdf') # Save a copy in a file
 
 xgrid=np.linspace(-5, 5)
 ygrid=np.linspace(-4, 4)
-grid=np.array([[indicator([x, y]) for x in xgrid ] for y in ygrid])
-print("grid: ", grid)
+grid=np.array([[ind([x, y]) for x in xgrid ] for y in ygrid])
+print("grid", grid)
 
 plt.contour(xgrid , ygrid , grid , (-1.0, 0.0, 1.0),colors=('red', 'black', 'blue'), linewidths=(1, 3, 1))
 

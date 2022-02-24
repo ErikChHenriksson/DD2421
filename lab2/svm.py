@@ -5,20 +5,29 @@ from enum import Enum
 
 debugging = True
 
+
+# ------------------------------------------------------------------------
+
 # Generate data
 if debugging:
     np.random.seed(100) # 100
 
-spread = 0.2 # 0.2
-classA = np.concatenate((np.random.randn(10 , 2) * spread+[1.5, 0.5], np.random.randn(10, 2) * spread + [-1.5 ,0.5]))
-classB = np.random.randn(20 , 2) * spread + [0.0 , -0.5]
+spread = 0 # 0.2
+#classA = np.concatenate((np.random.randn(10 , 2) * spread+[1.5, 0.5])) te((np.random.randn(10 , 2) * spread+[1.5, 0.5])) #, np.random.randn(10, 2) * spread + [-1.5 ,0.5]))
+classA = np.random.randn(2 , 2) * spread+[0.0, 0.0] #)) te((np.random.randn(10 , 2) * spread+[1.5, 0.5])) #, np.random.randn(10, 2) * spread + [-1.5 ,0.5]))
+
+classB = np.random.randn(2 , 2) * spread + [0.0, 1.0]
+
 inputs = np.concatenate(( classA , classB ) )
 t = np.concatenate((np.ones( classA.shape [0]) , -np.ones( classB.shape [0] )))
 N = inputs.shape[ 0 ] # Number of rows ( samples )
 permute = list( range(N) )
-random.shuffle(permute)
+#random.shuffle(permute)
 inputs = inputs[permute, :]
 t = t[permute]
+
+
+# ------------------------------------------------------------------------
 
 # Linear kernel
 def kernel(x ,y ):
@@ -29,14 +38,20 @@ def kernel(x ,y ):
 	#polynomial
 #	return 	np.dot(x,y)**2
 
+
 def calculateP():
 	return np.array([[t[i]*t[j]*kernel(inputs[i], inputs[j]) for j in range(N)] for i in range(N)])
 
 def zerofun(alpha):
     return np.dot(alpha, t)
 
+print("inputs:", inputs)
 P = calculateP()
-print("P", P)
+
+def objective2(alpha):
+    objective_sum = 0.5 * np.dot(np.dot(P, alpha), alpha) - np.sum(alpha)
+    print("sum:", objective_sum)
+    return objective_sum
 
 def objective(alpha):
     sum = 0
@@ -44,19 +59,21 @@ def objective(alpha):
         for j in range(N):
             sum += alpha[i]*alpha[j]*P[i,j]
     sum  = 0.5*sum - np.sum(alpha)
+    print("sum:", sum)
     return sum
     """ test = 0.5 * np.dot(np.dot(P, alpha), alpha) - np.sum(alpha)
     return test """
 
-alpha = np.zeros(N) # initial guess of the alpha vector
+start_alpha = np.zeros(N) # initial guess of the alpha vector
 
 C = None
 B =[(0,C) for b in range(N)]
 XC = {'type':'eq', 'fun':zerofun}
 
-ret = minimize(objective, alpha, bounds=B, constraints=XC )
-#print"ret", ret)
+ret = minimize(objective2, start_alpha, bounds=B, constraints=XC )
+print("ret", ret)
 alpha = ret['x']
+print("alpha", alpha)
 # TODO HELP - alpha is only zeros. Where is the error?
 
 
@@ -65,6 +82,7 @@ s = []
 for i in range(len(alpha)):
     if alpha[i] > 1e-5:
         s.append(i)
+print("s", s)
     
 
 

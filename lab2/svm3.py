@@ -12,7 +12,7 @@ if debugging:
 # ------------------------------------------------------------------------
 # GENERATING DATA
 classA = np.concatenate((np.random.randn (10 , 2) * 0.2 + [ 1.5 , 0.5 ] ,np.random.randn(10 , 2)*0.2 + [ -1.5 , 0.5 ]))
-classB = np.random.randn(20 , 2)*0.2 + [ 0.0 , -0.5]
+classB = np.random.randn(20 , 2)*0.2 + [ 0.0 , 2.0]
 
 inputs = np.concatenate((classA , classB))
 targets = np.concatenate((np.ones(classA.shape[0]),-np.ones(classB.shape[0])))
@@ -121,6 +121,7 @@ plt.savefig('svmplot.pdf') # Save a copy in a file
 xgrid=np.linspace(-5, 5)
 ygrid=np.linspace(-4, 4)
 grid=np.array([[ind2([x, y]) for x in xgrid ] for y in ygrid])
+print("grid", grid)
 """print("grid")
 for l in grid:
     print(l) """
