@@ -1,17 +1,22 @@
 import numpy as np, random, math
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 from enum import Enum
 
-debugging = False
+debugging = True
 
 # Generate data
 if debugging:
     np.random.seed(100) # 100
 
-spread = 0.2 # 0.2
-classA = np.concatenate((np.random.randn(10 , 2) * spread+[1.5, 0.5], np.random.randn(10, 2) * spread + [-1.5 ,0.5]))
-classB = np.random.randn(20 , 2) * spread + [0.0 , -0.5]
+# spread = 0.2 # 0.2
+""" classA = np.concatenate((np.random.randn(10 , 2) * spread+[1.5, 0.5], np.random.randn(10, 2) * spread + [-1.5 ,0.5]))
+classB = np.random.randn(20 , 2) * spread + [0.0 , -0.5] """
+
+spread = 3 # 0.2
+classA = np.concatenate((np.random.randn(5 , 2) * spread+[1.5, 0.5], np.random.randn(5, 2) * spread + [-1.5 ,0.5]))
+classB = np.random.randn(5 , 2) * spread + [0.0 , -0.5]
 
 # NEW
 #spread = 0.2 # 0.2
@@ -26,7 +31,7 @@ permute = list( range(N) )
 inputs = inputs[permute, :]
 t = t[permute]
 
-def kernel(x, y, type="RBF"):
+def kernel(x, y, type="poly"):
     x = np.transpose(x)
     if type == "linear":
         return np.dot(x, y)
@@ -35,7 +40,7 @@ def kernel(x, y, type="RBF"):
     elif type == "poly3":
         return (np.dot(x,y)+1)**3
     elif type == "RBF":
-        sigma=0.3
+        sigma=1
         return math.exp(-np.linalg.norm(x-y, 2)**2/(2*sigma**2))
     else :
         return 0
@@ -64,14 +69,14 @@ def objective(alpha):
 
 start = np.zeros(N) # initial guess of the alpha vector
 
-C = 1
+C = None
 B =[(0,C) for b in range(N)]
 XC = {'type':'eq', 'fun':zerofun}
 
 ret = minimize(objective, start, bounds=B, constraints=XC )
 print("ret", ret)
 alpha = ret['x']
-print("alpha: ", alpha)
+#print("alpha: ", alpha)
 
 # Extract non zero values of alpha
 s = []
@@ -79,7 +84,7 @@ for i in range(len(alpha)):
     if alpha[i] > 1e-5:
         s.append(i)
 
-print("s: ",s)
+#print("s: ",s)
 
 #New
 def calculateB(s, bound = None): # HAVE TO BE BETWEEN 0 (AND C(if slack is used)) (not negative)
@@ -94,7 +99,7 @@ def calculateB(s, bound = None): # HAVE TO BE BETWEEN 0 (AND C(if slack is used)
     return np.sum(sum_me)-t[index_b] # New
 
 b = calculateB(s)
-print("b: ",b)
+#print("b: ",b)
 
 def ind(p):
     #print"s:", s, "b:", b)
@@ -110,7 +115,7 @@ def indicator(p):
     #print("t_i", [t[i] for i in s])
 
     sum_me = [ alpha[i]*t[i]*kernel(a, p) for i in s]
-    print("ind", np.sum(sum_me) - b)
+    #print("ind", np.sum(sum_me) - b)
     return np.sum(sum_me) - b
 
 
@@ -123,11 +128,21 @@ plt.savefig('svmplot.pdf') # Save a copy in a file
 #plt.show() # Show the plot on the screen
 
 
-xgrid=np.linspace(-5, 5)
-ygrid=np.linspace(-4, 4)
+""" xgrid=np.linspace(-5, 5)
+ygrid=np.linspace(-4, 4) """
+xgrid=np.linspace(-10, 10)
+ygrid=np.linspace(-10, 10)
 grid=np.array([[ind([x, y]) for x in xgrid ] for y in ygrid])
-print("grid", grid)
+#print("grid", grid)
 
 plt.contour(xgrid , ygrid , grid , (-1.0, 0.0, 1.0),colors=('red', 'black', 'blue'), linewidths=(1, 3, 1))
+
+blue = mpatches.Patch(color='blue', label='Class A')
+red = mpatches.Patch(color='red', label='Class B')
+black = mpatches.Patch(color='black', label='Decision Boundry')
+plt.legend(handles=[blue, red, black])
+
+plt.xlabel('X')
+plt.ylabel('Y')
 
 plt.show()
