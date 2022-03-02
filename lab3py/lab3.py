@@ -43,8 +43,15 @@ def computePrior(labels, W=None):
     prior = np.zeros((Nclasses,1))
 
     # TODO: compute the values of prior for each class!
+    # OUR CODE
     # ==========================
-    
+
+    for jdx, c in enumerate(classes):
+        p = NptsPerClass[jdx] / Npts
+        C = 0
+        prior[jdx][0] = np.log(p) + C
+
+
     # ==========================
 
     return prior
@@ -65,13 +72,31 @@ def mlParams(X, labels, W=None):
 
     mu = np.zeros((Nclasses,Ndims))
     sigma = np.zeros((Nclasses,Ndims,Ndims))
+    NPointsPerClass = np.zeros(Nclasses)
 
-    # TODO: fill in the code to compute mu and sigma!
+    # OUR CODE
+    # ==========================
+
+    classes = np.unique(labels) # Get the unique examples
+    # Iterate over both index and value
+    for jdx, c in enumerate(classes):
+        # Extract the indices for which y==class
+        idx = np.where(labels==c)[0]
+        xlc = X[idx,:] # Get the x for the class labels. Vectors are rows.
+        mu[jdx] = sum(xlc)/len(xlc)
+        print("class, len, mu", c, len(xlc), mu[jdx])
+        for m in range(Ndims):
+            covariance = (1/ len(xlc))* sum(np.square(xlc[m, :] - mu[jdx][m]))
+            sigma[jdx, m, m] = covariance
+        NptsPerClass[jdx] = len(xlc)
+        # sigma[jdx] = np.diag(summan)
+
+    print("mu", mu)
+    print("sigma", sigma)
+
     # ==========================
     
-    # ==========================
-
-    return mu, sigma
+    return mu, sigma, NptsPerClass
 
 # in:      X - N x d matrix of M data points
 #      prior - C x 1 matrix of class priors
@@ -119,8 +144,8 @@ class BayesClassifier(object):
 # Call `genBlobs` and `plotGaussian` to verify your estimates.
 
 
-X, labels = genBlobs(centers=5)
-mu, sigma = mlParams(X,labels)
+X, labels = genBlobs(centers=5) # generates some Gaussian distributed test data with labels
+mu, sigma, NptsPerClass = mlParams(X,labels)
 plotGaussian(X,labels,mu,sigma)
 
 
