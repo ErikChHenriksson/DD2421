@@ -8,6 +8,7 @@ from matplotlib.colors import ColorConverter
 import random as rnd
 from sklearn.datasets import make_blobs
 from sklearn import decomposition, tree
+import os
 
 # import seaborn as sns
 # sns.set()
@@ -104,22 +105,29 @@ def trteSplitEven(X,y,pcSplit,seed=None):
 
 
 def fetchDataset(dataset='iris'):
+    __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
     if dataset == 'iris':
-        X = genfromtxt('irisX.txt', delimiter=',')
-        y = genfromtxt('irisY.txt', delimiter=',',dtype=np.int)-1
+        path = os.path.join(__location__, 'iris')
+        X = genfromtxt(path+"X.txt", delimiter=',')
+        y = genfromtxt(path+"Y.txt", delimiter=',',dtype=np.int)-1
+        #X = genfromtxt('irisX.txt', delimiter=',')
+        #y = genfromtxt('irisY.txt', delimiter=',',dtype=np.int)-1
         pcadim = 2
     elif dataset == 'wine':
-        X = genfromtxt('wineX.txt', delimiter=',')
-        y = genfromtxt('wineY.txt', delimiter=',',dtype=np.int)-1
+        path = os.path.join(__location__, 'wine')
+        X = genfromtxt(path+"X.txt", delimiter=',')
+        y = genfromtxt(path+"Y.txt", delimiter=',',dtype=np.int)-1
         pcadim = 0
     elif dataset == 'olivetti':
-        X = genfromtxt('olivettifacesX.txt', delimiter=',')
+        path = os.path.join(__location__, 'olivettifaces')
+        X = genfromtxt(path+"X.txt", delimiter=',')
         X = X/255
-        y = genfromtxt('olivettifacesY.txt', delimiter=',',dtype=np.int)
+        y = genfromtxt(path+"Y.txt", delimiter=',',dtype=np.int)-1
         pcadim = 20
     elif dataset == 'vowel':
-        X = genfromtxt('vowelX.txt', delimiter=',')
-        y = genfromtxt('vowelY.txt', delimiter=',',dtype=np.int)
+        path = os.path.join(__location__, 'vowel')
+        X = genfromtxt(path+"X.txt", delimiter=',')
+        y = genfromtxt(path+"Y.txt", delimiter=',',dtype=np.int)
         pcadim = 0
     else:
         print("Please specify a dataset!")
@@ -177,7 +185,7 @@ def testClassifier(classifier, dataset='iris', dim=0, split=0.7, ntrials=100):
 
     X,y,pcadim = fetchDataset(dataset)
 
-    means = np.zeros(ntrials,);
+    means = np.zeros(ntrials,)
 
     for trial in range(ntrials):
 

@@ -19,6 +19,8 @@
 import numpy as np
 from scipy import misc
 from imp import reload
+
+from torch import kaiser_window
 from labfuns import *
 import random
 
@@ -31,7 +33,7 @@ import random
 # NOTE: you do not need to handle the W argument for this part!
 # in: labels - N vector of class labels
 # out: prior - C x 1 vector of class priors
-def computePrior(labels, W=None):
+def computePriorNOTINUSE(labels, W=None):
     Npts = labels.shape[0]
     if W is None:
         W = np.ones((Npts,1))/Npts
@@ -46,11 +48,32 @@ def computePrior(labels, W=None):
     # OUR CODE
     # ==========================
 
-    for jdx, c in enumerate(classes):
-        p = NptsPerClass[jdx] / Npts
-        C = 0
-        prior[jdx][0] = np.log(p) + C
+    for k, c in enumerate(classes):
+        prior[k] = np.count_nonzero(labels == c) / Npts
 
+    # ==========================
+
+    return prior
+
+def computePrior(labels, W=None): #with weights
+    Npts = labels.shape[0]
+    if W is None:
+        W = np.ones((Npts,1))/Npts
+    else:
+        assert(W.shape[0] == Npts)
+    classes = np.unique(labels)
+    Nclasses = np.size(classes)
+
+    prior = np.zeros((Nclasses,1))
+
+    # TODO: compute the values of prior for each class!
+    # OUR CODE
+    # ==========================
+
+    for k, c in enumerate(classes):
+        idx = np.where(labels==c)[0]
+        w_i = W[idx]
+        prior[k] = np.sum(w_i) / np.sum(W)
 
     # ==========================
 
@@ -61,7 +84,7 @@ def computePrior(labels, W=None):
 #     labels - N vector of class labels
 # out:    mu - C x d matrix of class means (mu[i] - class i mean)
 #      sigma - C x d x d matrix of class covariances (sigma[i] - class i sigma)
-def mlParams(X, labels, W=None):
+def mlParamsNOTINUSE(X, labels, W=None):
     assert(X.shape[0]==labels.shape[0])
     Npts,Ndims = np.shape(X)
     classes = np.unique(labels)
@@ -72,31 +95,60 @@ def mlParams(X, labels, W=None):
 
     mu = np.zeros((Nclasses,Ndims))
     sigma = np.zeros((Nclasses,Ndims,Ndims))
-    NPointsPerClass = np.zeros(Nclasses)
 
     # OUR CODE
     # ==========================
 
     classes = np.unique(labels) # Get the unique examples
     # Iterate over both index and value
-    for jdx, c in enumerate(classes):
+    for k, c in enumerate(classes):
         # Extract the indices for which y==class
         idx = np.where(labels==c)[0]
-        xlc = X[idx,:] # Get the x for the class labels. Vectors are rows.
-        mu[jdx] = sum(xlc)/len(xlc)
-        print("class, len, mu", c, len(xlc), mu[jdx])
+        x_i = X[idx,:] # Get the x for the class labels. Vectors are rows.
+        mu[k] = sum(x_i)/len(x_i)
         for m in range(Ndims):
-            covariance = (1/ len(xlc))* sum(np.square(xlc[m, :] - mu[jdx][m]))
-            sigma[jdx, m, m] = covariance
-        NptsPerClass[jdx] = len(xlc)
+            covariance = (1/ len(x_i)) * sum(np.square(x_i[m, :] - mu[k][m]))
+            sigma[k, m, m] = covariance
         # sigma[jdx] = np.diag(summan)
 
-    print("mu", mu)
-    print("sigma", sigma)
+    # ==========================
+
+    return mu, sigma
+
+
+def mlParams(X, labels, W=None): #with weights
+    assert(X.shape[0]==labels.shape[0])
+    Npts,Ndims = np.shape(X)
+    classes = np.unique(labels)
+    Nclasses = np.size(classes)
+
+    if W is None:
+        W = np.ones((Npts,1))/float(Npts)
+
+    mu = np.zeros((Nclasses,Ndims))
+    sigma = np.zeros((Nclasses,Ndims,Ndims))
+
+    # OUR CODE
+    # ==========================
+
+    classes = np.unique(labels) # Get the unique examples
+    # Iterate over both index and value
+    for k, c in enumerate(classes):
+        # Extract the indices for which y==class
+        idx = np.where(labels==c)[0]
+        x_i = X[idx] # Get the x for the class labels. Vectors are rows.
+        w_i = W[idx]
+        mu[k] = sum(x_i * w_i)/np.sum(w_i)
+        diag_x = x_i - mu[k]
+        sigma[k] = np.diag(sum(w_i * np.square(diag_x)) / sum(w_i))
+        """ for m in range(Ndims):
+            square =  np.square(x_i[m, :] - mu[k][m])
+            covariance = (1/ np.sum(w_i)) * sum(w_i[m] * square)
+            sigma[k, m, m] = covariance """
 
     # ==========================
     
-    return mu, sigma, NptsPerClass
+    return mu, sigma
 
 # in:      X - N x d matrix of M data points
 #      prior - C x 1 matrix of class priors
@@ -111,7 +163,15 @@ def classifyBayes(X, prior, mu, sigma):
 
     # TODO: fill in the code to compute the log posterior logProb!
     # ==========================
-    
+    C =0
+    for k in range(Nclasses):
+        for i in range(Npts):
+            x_star = X[i]
+            term1 = -0.5 * np.log(np.linalg.det(sigma[k]))
+            #term2 = -0.5 * (x_star - mu[k]) * np.linalg.inv(sigma[k]) * np.transpose((x_star - mu[k])) # might be the wrong operator
+            term2 = -0.5 * np.dot(np.dot((x_star - mu[k]),np.linalg.inv(sigma[k])), np.transpose((x_star - mu[k])))
+            term3 = np.log(prior[k])
+            logProb[k, i] = term1 + term2 + term3 + C
     # ==========================
     
     # one possible way of finding max a-posteriori once
@@ -143,10 +203,12 @@ class BayesClassifier(object):
 # 
 # Call `genBlobs` and `plotGaussian` to verify your estimates.
 
-
-X, labels = genBlobs(centers=5) # generates some Gaussian distributed test data with labels
-mu, sigma, NptsPerClass = mlParams(X,labels)
-plotGaussian(X,labels,mu,sigma)
+###         OWN EXPERIMENTS
+""" X, labels = genBlobs(centers=5) # generates some Gaussian distributed test data with labels
+mu, sigma = mlParams(X,labels)
+print("mu", mu)
+print("sigma", sigma)
+plotGaussian(X,labels,mu,sigma) """
 
 
 # Call the `testClassifier` and `plotBoundary` functions for this part.
@@ -193,11 +255,33 @@ def trainBoost(base_classifier, X, labels, T=10):
 
         # TODO: Fill in the rest, construct the alphas etc.
         # ==========================
+        eps = 0
+        for i in range(Npts):  
+            eps = eps + wCur[i] * (1-delta(vote[i], labels[i]))
+
+        alpha = 0.5 * (np.log(1-eps) - np.log(eps))
+
+        Z = 0
+        for i in range(Npts):
+            if vote[i] == labels[i]:
+                w_weight = np.exp(-alpha)
+            else:
+                w_weight = np.exp(alpha)
+            wCur[i] = wCur[i] * w_weight
+            Z += wCur[i]
+            
+        wCur /= Z
         
-        # alphas.append(alpha) # you will need to append the new alpha
+        alphas.append(alpha) # you will need to append the new alpha
         # ==========================
         
     return classifiers, alphas
+
+def delta(vote_i, label_i):
+    if vote_i == label_i:
+        return 1
+    else:
+        return 0    
 
 # in:       X - N x d matrix of N data points
 # classifiers - (maximum) length T Python list of trained classifiers as above
@@ -217,6 +301,10 @@ def classifyBoost(X, classifiers, alphas, Nclasses):
         # TODO: implement classificiation when we have trained several classifiers!
         # here we can do it by filling in the votes vector with weighted votes
         # ==========================
+        for t, classifier in enumerate(classifiers):
+            classes = classifier.classify(X)
+            for i in range(Npts):
+                votes[i][classes[i]] += alphas[t]
         
         # ==========================
 
@@ -254,16 +342,17 @@ class BoostClassifier(object):
 
 
 
-#testClassifier(BoostClassifier(BayesClassifier(), T=10), dataset='vowel',split=0.7)
+testClassifier(BoostClassifier(BayesClassifier(), T=10), dataset='vowel',split=0.7)
 
 
 
-#plotBoundary(BoostClassifier(BayesClassifier()), dataset='iris',split=0.7)
+plotBoundary(BoostClassifier(BayesClassifier()), dataset='vowel',split=0.7)
 
 
 # Now repeat the steps with a decision tree classifier.
 
 
+#print("hello")
 #testClassifier(DecisionTreeClassifier(), dataset='iris', split=0.7)
 
 
@@ -277,7 +366,6 @@ class BoostClassifier(object):
 
 
 #testClassifier(BoostClassifier(DecisionTreeClassifier(), T=10), dataset='vowel',split=0.7)
-
 
 
 #plotBoundary(DecisionTreeClassifier(), dataset='iris',split=0.7)
